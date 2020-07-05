@@ -1,0 +1,38 @@
+#!/bin/bash -xe
+
+SHDIR=$(cd $(dirname $0) && pwd)
+
+function build () {
+	docker run \
+		--rm \
+		-it \
+		--user=$(id -u):$(id -g) \
+		-v $SHDIR/src/:/src/:ro \
+		-v $SHDIR/bin/:/build/ \
+		golang \
+		bash -c "\
+			cd /src &&
+			CGO_ENABLED=0 \
+			GOOS=$1 \
+			GOARCH=$2 \
+			XDG_CACHE_HOME=/tmp/.cache \
+			go build \
+				-ldflags \"-s -w\" \
+				-o /build/$3 \
+				${@:4}
+		"
+}
+
+mkdir -p $SHDIR/bin
+
+build linux amd64 lcd-calibration-image-generator.elf \
+	main.go
+
+build windows amd64 lcd-calibration-image-generator.exe \
+	main.go
+
+build darwin amd64 lcd-calibration-image-generator.macho \
+	main.go
+
+zip -r lcd-calibration-image-generator.zip release/
+
